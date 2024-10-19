@@ -8,7 +8,11 @@ import time
 import re
 import binascii
 import murata_consts
+from enum import Enum
 
+class socket_type(Enum):
+    tcp = 1
+    udp = 2
 class murata:
     def __init__(self, port, baudrate=115200):
         while 1:
@@ -41,7 +45,7 @@ class murata:
         if remove_echo:
             _ = self.ser.readline()
         r = self.ser.readline()
-        #print("READ: ", r)
+        print("READ: ", r)
         return r
 
     def _check_success(self):
@@ -215,14 +219,16 @@ class murata:
 
         return True, int(str_data[0]), int(str_data[1])
     
-    def udp_socket_setup(self, dest_addr, dest_port):
+    # type is of socket
+    def socket_setup(self, type, dest_addr, dest_port):
         #if not self._validIP(dest_addr):
         #    print("INVALID IP")
         #    return False
         
         # config socket
 
-        self._write('AT%SOCKETCMD="ALLOCATE",1,"TCP","OPEN","{}",{}'.format(dest_addr, dest_port))
+        self._write('AT%SOCKETCMD="ALLOCATE",1,"{}","OPEN","{}",{}'.format(
+            "TCP" if type == socket_type.tcp else "UDP", dest_addr, dest_port))
         
         if self._read() != b'%SOCKETCMD:1\r\n':
             print("socket setup fail - check if there is another socket already")
@@ -244,7 +250,7 @@ class murata:
         # socket is now ready
         return True
     
-    def udp_socket_send(self, data):
+    def socket_send(self, data):
         size = len(data)
         hex_data = str(binascii.hexlify(data))[2:-1]
 
@@ -266,9 +272,11 @@ class murata:
         if not self._check_success():
             return False
         
-        return self._read() != b'\r\n'
+        #return self._read() != b'\r\n' #-> wait for reply
+        time.sleep(0.2) # so that multiple messages don't combine
+        return True
     
-    def udp_socket_info(self):
+    def socket_info(self):
         self._write('AT%SOCKETCMD="INFO",1')
 
         r = self._read() # actual info
@@ -276,7 +284,7 @@ class murata:
 
         return self._check_success()
         
-    def udp_socket_close(self):
+    def socket_close(self):
         self._write('AT%SOCKETCMD="DELETE",1')
         return self._check_success()
 
