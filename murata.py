@@ -9,7 +9,14 @@ import murata_consts
 
 class murata:
     def __init__(self, port, baudrate=115200):
-        self.ser = serial.Serial(port, baudrate, timeout=2)
+        while 1:
+            try:
+                self.ser = serial.Serial(port, baudrate, timeout=None)
+            except serial.serialutil.SerialException as e:
+                print("device not connected")
+                time.sleep(0.3)
+                continue
+            break
 
         # wait for dev to init
         print("device needs to init")
@@ -20,6 +27,7 @@ class murata:
             time.sleep(0.5)
 
         print("device successfully init")
+        time.sleep(murata_consts.MURATA_BOOT_WAIT) # https://stackoverflow.com/a/35885723/
 
     def close(self):
         self.ser.close()
@@ -39,7 +47,11 @@ class murata:
     
     def _write(self, command):
         self.ser.write(str.encode(command+'\r'))
-        time.sleep(0.5) # let command propogate
+        time.sleep(0.25) # let command propogate
+
+    def _write_raw(self, raw_command):
+        self.ser.write(raw_command)
+        time.sleep(0.25) # let command propogate
 
     ### --- Interaction Functions
 
@@ -54,6 +66,8 @@ class murata:
             while self._read() != murata_consts.MURATA_BOOT:
                 print("waiting for correct response for reboot")
                 time.sleep(0.5)
+            print("reboot successful")
+            time.sleep(murata_consts.MURATA_BOOT_WAIT)
             return True
         return False
     
@@ -62,6 +76,10 @@ class murata:
         if self._check_success():
             return self.reboot()
         return False
+    
+    def see_sim_select(self):
+        self._write('AT%GETCFG="SIM_INIT_SELECT_POLICY"')
+        return self._read()
     
     def disable_radio(self):
         self._write('AT+CFUN=0')
@@ -135,6 +153,63 @@ class murata:
             r = self._read(remove_echo=False)
 
         return True
+    
+    def use_cellular(self):
+        self._write('AT%RATACT="CATM","1"')
+        return self._check_success()
+    
+    def use_satellite(self):
+        self._write('AT%RATACT="NBNTN","1"')
+        return self._check_success()
+    
+    def check_sim(self):
+        self._write('AT+CPIN?')
+        while 1:
+            print("sim = ", self.ser.read_all())
+            time.sleep(1)
+        return True
+
+    ## --- Sending messages/pinging
+
+    def _validIP(self, addr):
+        parts = addr.split(".")
+        if len(parts) != 4:
+            return False
+        for item in parts:
+            if not 0 <= int(item) <= 255:
+                return False
+        return True
+
+    # addr is str
+    # count, packet_size, timeout is int
+    # return type is three vars: [is_valid, x, y]
+    def ping(self, addr, count, packet_size, timeout=10):
+        if not self._validIP(addr):
+            print("INVALID IP")
+            return False
+
+        command = 'AT%PINGCMD=0,'
+        command += '"' + addr + '",'
+        command += str(count) + ','
+        command += str(packet_size) + ','
+        command += str(timeout)
+
+        self._write(command)
+
+        r = self._read(False) # first message is echo
+        print("First = ", r)
+        r = self._read(False) # second message is either OK or ping response 
+        print("Second = ", r)
+        if r == murata_consts.MURATA_OK: # no response was recieved
+            return False, -1, -1
+
+
+
+        return True, -1, -1
+        
+
+
+
         
 
         
