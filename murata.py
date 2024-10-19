@@ -6,13 +6,14 @@
 import serial
 import time
 import re
+import binascii
 import murata_consts
 
 class murata:
     def __init__(self, port, baudrate=115200):
         while 1:
             try:
-                self.ser = serial.Serial(port, baudrate, timeout=None)
+                self.ser = serial.Serial(port, baudrate, timeout=5)
             except serial.serialutil.SerialException as e:
                 print("device not connected")
                 time.sleep(0.5)
@@ -40,7 +41,7 @@ class murata:
         if remove_echo:
             _ = self.ser.readline()
         r = self.ser.readline()
-        print("READ: ", r)
+        #print("READ: ", r)
         return r
 
     def _check_success(self):
@@ -213,6 +214,77 @@ class murata:
         str_data = m.groups()
 
         return True, int(str_data[0]), int(str_data[1])
+    
+    def udp_socket_setup(self, addr):
+        if not self._validIP(addr):
+            print("INVALID IP")
+            return False
+        
+        # config socket
+
+        self._write('AT%SOCKETCMD="ALLOCATE",1,"UDP","OPEN","{}",7,12345'.format(addr))
+        
+        if self._read() != b'%SOCKETCMD:1\r\n':
+            print("socket setup fail - check if there is another socket already")
+            return False
+        
+        if not self._check_success():
+            return False
+        
+        # set active
+
+        self._write('AT%SOCKETCMD="SETOPT",1,36000,1')
+        if not self._check_success():
+            return False
+        
+        self._write('AT%SOCKETCMD="ACTIVATE",1')
+        if not self._check_success():
+            return False
+        
+        # socket is now ready
+        return True
+    
+    def udp_socket_send(self, data):
+        size = len(data)
+        hex_data = str(binascii.hexlify(data))[2:-1]
+
+        command ='AT%SOCKETDATA="SEND",1,{},"{}"'.format(size, hex_data) 
+        self._write(command)
+
+        r = self._read()
+        r_str = r.decode()
+
+        m = re.search(r'(\d+),(\d+)\s*$', r_str)
+        if not m or int(m.groups()[0]) != 1 or int(m.groups()[1]) != size:
+            print("message could not be sent")
+            return False
+        
+        if not self._check_success():
+            return False
+        
+        return self._read() != b'\r\n'
+    
+    def udp_socket_info(self):
+        self._write('AT%SOCKETCMD="INFO",1')
+
+        r = self._read() # actual info
+        print("SOCKET INFO: ", r.decode())
+
+        return self._check_success()
+        
+    def udp_socket_close(self):
+        self._write('AT%SOCKETCMD="DELETE",1')
+        return self._check_success()
+
+        
+
+        
+
+        
+
+
+        
+
         
 
 
