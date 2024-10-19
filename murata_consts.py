@@ -1,0 +1,3 @@
+MURATA_OK=b'OK\r\n'
+MURATA_ERROR=b'ERROR\r\n'
+MURATA_BOOT=b'%BOOTEV:0\r\n'
