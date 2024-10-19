@@ -5,6 +5,7 @@
 
 import serial
 import time
+import re
 import murata_consts
 
 class murata:
@@ -14,7 +15,7 @@ class murata:
                 self.ser = serial.Serial(port, baudrate, timeout=None)
             except serial.serialutil.SerialException as e:
                 print("device not connected")
-                time.sleep(0.3)
+                time.sleep(0.5)
                 continue
             break
 
@@ -197,15 +198,21 @@ class murata:
         self._write(command)
 
         r = self._read(False) # first message is echo
-        print("First = ", r)
+        #print("First = ", r)
         r = self._read(False) # second message is either OK or ping response 
-        print("Second = ", r)
+        #print("Second = ", r)
         if r == murata_consts.MURATA_OK: # no response was recieved
             return False, -1, -1
 
+        r_str = r.decode()
 
+        m = re.search(r'(\d+),(\d+)\s*$', r_str)
+        if not m:
+            return False, 0, 0
+        
+        str_data = m.groups()
 
-        return True, -1, -1
+        return True, int(str_data[0]), int(str_data[1])
         
 
 
