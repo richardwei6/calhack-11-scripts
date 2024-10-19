@@ -19,8 +19,8 @@ def send_message(host, port, message):
 
 if __name__ == '__main__':
     # Replace with the server's public IP address
-    server_ip = '172.56.43.118'
-    server_port = 53
+    server_ip = '0.tcp.us-cal-1.ngrok.io'
+    server_port = 11835
     message = 'Hello, Server!'
     
     send_message(server_ip, server_port, message)

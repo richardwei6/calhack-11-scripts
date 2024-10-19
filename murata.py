@@ -186,9 +186,9 @@ class murata:
     # count, packet_size, timeout is int
     # return type is three vars: [is_valid, x, y]
     def ping(self, addr, count, packet_size, timeout=10):
-        if not self._validIP(addr):
-            print("INVALID IP")
-            return False
+#        if not self._validIP(addr):
+#            print("INVALID IP")
+#            return False
 
         command = 'AT%PINGCMD=0,'
         command += '"' + addr + '",'
@@ -215,14 +215,14 @@ class murata:
 
         return True, int(str_data[0]), int(str_data[1])
     
-    def udp_socket_setup(self, addr):
-        if not self._validIP(addr):
-            print("INVALID IP")
-            return False
+    def udp_socket_setup(self, dest_addr, dest_port):
+        #if not self._validIP(dest_addr):
+        #    print("INVALID IP")
+        #    return False
         
         # config socket
 
-        self._write('AT%SOCKETCMD="ALLOCATE",1,"UDP","OPEN","{}",7,12345'.format(addr))
+        self._write('AT%SOCKETCMD="ALLOCATE",1,"TCP","OPEN","{}",{}'.format(dest_addr, dest_port))
         
         if self._read() != b'%SOCKETCMD:1\r\n':
             print("socket setup fail - check if there is another socket already")
@@ -233,9 +233,9 @@ class murata:
         
         # set active
 
-        self._write('AT%SOCKETCMD="SETOPT",1,36000,1')
-        if not self._check_success():
-            return False
+        #self._write('AT%SOCKETCMD="SETOPT",1,36000,1')
+        #if not self._check_success():
+        #    return False
         
         self._write('AT%SOCKETCMD="ACTIVATE",1')
         if not self._check_success():
@@ -250,6 +250,10 @@ class murata:
 
         command ='AT%SOCKETDATA="SEND",1,{},"{}"'.format(size, hex_data) 
         self._write(command)
+
+        #while 1:
+        #    self._read(False)
+        #    time.sleep(0.5)
 
         r = self._read()
         r_str = r.decode()

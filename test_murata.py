@@ -8,8 +8,9 @@ m = murata.murata('/dev/tty.usbserial-140')
 #print("enable cell = ", m.use_cellular())
 #print(m.ping("8.8.8.8", 1, 100))
 
-print(m.udp_socket_setup("34.192.142.126"))
-print(m.udp_socket_send(b'foo'))
+print(m.udp_socket_setup("0.tcp.us-cal-1.ngrok.io", 11835))
+print(m.udp_socket_send(b'Hello1'))
+print(m.udp_socket_send(b'fuck u nipun'))
 print(m.udp_socket_info())
 print(m.udp_socket_close())
 
