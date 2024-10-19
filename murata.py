@@ -39,6 +39,7 @@ class murata:
     
     def _write(self, command):
         self.ser.write(str.encode(command+'\r'))
+        time.sleep(0.5) # let command propogate
 
     ### --- Interaction Functions
 
@@ -81,7 +82,7 @@ class murata:
         
         for c in ntn_commands:
             self._write(c)
-            if not self._check_success:
+            if not self._check_success():
                 return False
 
         if not self.reboot():
@@ -100,7 +101,7 @@ class murata:
         
         for c in ntn_commands_2:
             self._write(c)
-            if not self._check_success:
+            if not self._check_success():
                 return False
 
         if not self.reboot():
@@ -114,17 +115,26 @@ class murata:
         act_commands = ['AT%IGNSSEV="FIX",1',
                         'AT%NOTIFYEV="SIB31",1'
                         'AT+CEREG=2'
-                        'AT%IGNSSACT=1'
-                        'AT+CFUN=1']
+                        'AT%IGNSSACT=1']
 
         for c in act_commands:
             self._write(c)
-            if not self._check_success:
+            if not self._check_success():
                 return False
             
-        r = self.read(remove_echo=False)
-        print("final read = " + r)
-        return r != b''
+        # ADD DELAY HERE
+        print("AWAIT Satellite connection")
+        time.sleep(10)
+
+        if not self.enable_radio():
+            return False
+        
+        r = self._read(remove_echo=False)
+        while r != b'':
+            print("SATELLITE: ", r)
+            r = self._read(remove_echo=False)
+
+        return True
         
 
         
